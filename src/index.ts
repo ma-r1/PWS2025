@@ -10,6 +10,7 @@ import { authRouter, initAuth } from './helpers/auth';
 import { uploadRouter } from './helpers/fileupload';
 import { personsRouter } from './api/persons';
 import { teamsRouter } from './api/teams';
+import { tasksRouter } from './api/tasks';
 
 config({ quiet: true });
 
@@ -49,6 +50,7 @@ async function main() {
   // import and install api routers
   app.use(apiUrl + '/persons', personsRouter);
   app.use(apiUrl + '/teams', teamsRouter);
+  app.use(apiUrl + '/tasks', tasksRouter)
 
   // install our error handler (must be the last app.use)
   app.use(errorHandler);

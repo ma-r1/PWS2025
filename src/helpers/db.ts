@@ -60,6 +60,23 @@ export const membershipTableDef = {
   ]
 };
 
+export const taskTableDef = {
+  name: 'tasks',
+  columns: {
+    id: { type: 'INTEGER', primaryKey: true, autoincrement: true },
+    name: { type: 'TEXT', notNull: true },
+    team_id: { type: 'INTEGER', notNull: true },
+    person_id: { type: 'INTEGER', notNull: true },
+    start_date: { type: 'DATE', notNull: false },
+    end_date: { type: 'DATE' }
+  },
+  foreignKeys: [
+    { column: 'team_id', references: 'teams(id)' },
+    { column: 'person_id', references: 'persons(id)' }
+  ]
+  };
+
+
 function createTableStatement(def: { 
     name: string;
     columns: { [key: string]: { type: string; primaryKey?: boolean; autoincrement?: boolean; notNull?: boolean; unique?: boolean; default?: any; foreignKey?: any }},
@@ -138,4 +155,22 @@ export async function createSchemaAndData(): Promise<void> {
     await db.connection!.run('INSERT INTO memberships (person_id, team_id) VALUES (?, ?)', ...membership);
   }
   console.log('Memberships table created with sample data');
-}
+
+  const createTasksStatement = createTableStatement(taskTableDef);
+  await db.connection!.run(createTasksStatement);
+  console.log('Tasks table created');
+  const tasksNum: number = parseInt(process.env.DBFAKETASKS || '10') || 10;
+  for(let i = 0; i < tasksNum; i++) { 
+    const name = faker.company.name();
+    await db.connection!.run('INSERT INTO tasks (name, team_id, person_id, start_date, end_date) VALUES (?, ?, ?, ?, ?)',
+      name,
+      Math.floor(Math.random() * teamsNum) + 1,
+      Math.floor(Math.random() * personNum) + 1,
+      faker.date.past(),
+      faker.date.future()
+    );
+  }
+  console.log(`${tasksNum} fake tasks data created`);
+
+  }
+
