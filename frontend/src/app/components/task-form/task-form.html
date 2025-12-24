@@ -1,0 +1,56 @@
+<form [formGroup]="form">
+
+    <mat-card>
+        <mat-card-content class="form-container">
+
+            <div class="flex-row">
+                <mat-form-field appearance="outline" class="flex-field">
+                    <mat-label>Name</mat-label>
+                    <input matInput formControlName="name" placeholder="Name"/>
+                    @if(form.get('name')?.invalid) {
+                        <mat-error>Name is required</mat-error>
+                    }
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="flex-field">
+                    <mat-label>Team ID</mat-label>
+                    <input matInput formControlName="team_id" placeholder="Team ID"/>
+                    @if(form.get('team_id')?.invalid) {
+                        <mat-error>Team ID is required</mat-error>
+                    }
+                </mat-form-field>    
+
+                <mat-form-field appearance="outline" class="flex-field">
+                    <mat-label>Person ID</mat-label>
+                    <input matInput formControlName="person_id" placeholder="Person ID"/>
+                    @if(form.get('person_id')?.invalid) {
+                        <mat-error>Person ID is required</mat-error>
+                    }
+                </mat-form-field>    
+
+                <mat-form-field appearance="outline" class="flex-field">
+                    <mat-label></mat-label>
+                    <input matInput [matDatepicker]="picker" formControlName="start_date" placeholder="Start date">
+                    <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+                    <mat-datepicker #picker></mat-datepicker>
+                    @if(form.get('start_date')?.invalid) {
+                        <mat-error>Start date is invalid</mat-error>
+                    }
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="flex-field">
+                    <mat-label></mat-label>
+                    <input matInput [matDatepicker]="picker" formControlName="end_date" placeholder="End date">
+                    <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+                    <mat-datepicker #picker></mat-datepicker>
+                    @if(form.get('end_date')?.invalid) {
+                        <mat-error>End date is invalid</mat-error>
+                    }
+                </mat-form-field>
+            </div>
+
+            
+        </mat-card-content>
+    </mat-card>
+
+</form>
