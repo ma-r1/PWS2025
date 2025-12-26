@@ -13,6 +13,7 @@ import { EditTaskDialog } from '../../dialogs/edit-task/edit-task';
 import { User } from '../../models/user';
 import { AuthService } from '../../services/auth';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { ColorsService } from '../../services/colors';
 
 @Component({
   selector: 'tasks-table',
@@ -22,7 +23,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
   standalone: true
 })
 export class TasksTableComponent  {
-  displayedColumns: string[] = ['id', 'name', 'team_id', 'person_id', 'start_date', 'end_date'];
+  displayedColumns: string[] = ['id', 'name', 'team', 'person', 'start_date', 'end_date'];
   tasks: Task[] = [];
   private sub?: Subscription;
 
@@ -35,7 +36,7 @@ export class TasksTableComponent  {
   } // set private component _filter if parent component changes value of filter
   
   @ViewChild('tableContainer') tableContainer!: ElementRef<HTMLDivElement>;
-
+  getContrastColor: (color: string) => string;
   user: User | null = null;
   loading: boolean = false;
   order: number = 1;
@@ -45,10 +46,12 @@ export class TasksTableComponent  {
   constructor(
     private authService: AuthService,
     private tasksService: TasksService,
+        private colorsService: ColorsService,
     private dialog: MatDialog,
     private snackBar: MatSnackBar
   ) {
     this.authService.currentUser$.subscribe(user => { this.user = user; });
+    this.getContrastColor = this.colorsService.getContrastColor;
   }
 
   ngOnInit() {

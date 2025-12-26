@@ -55,5 +55,5 @@ export class TasksPage {
            return this.authService.isInRole(this.user, roles);
     }    onCountsChange(counts: { total: number, filtered: number, order: number }) {
         this.order = counts.order;
-    }
+    } //TODO filter not working :c
 }

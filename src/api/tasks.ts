@@ -12,8 +12,10 @@ export const tasksRouter = Router();
 tasksRouter.get('/', requireRole([0, 1]), async (req: Request, res: Response) => {
   let query = `
     SELECT
-      id, name, team_id, person_id, start_date, end_date
+    tasks.id, tasks.name, team_id, teams.color as team_color, teams.name as team_name, person_id, persons.firstname || ' ' || persons.lastname AS person_name, start_date, end_date
     FROM tasks
+    LEFT JOIN teams ON tasks.team_id = teams.id
+    LEFT JOIN persons ON tasks.person_id = persons.id
   ` // base query
 
   const sqlParams: any[] = [];
