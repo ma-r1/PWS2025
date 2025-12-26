@@ -7,10 +7,6 @@ import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatBadgeModule } from '@angular/material/badge';
 
-import pdfMake from 'pdfmake/build/pdfmake';
-import pdfFonts from 'pdfmake/build/vfs_fonts';
-(pdfMake as any).vfs = (pdfFonts as any).vfs;
-
 import { TasksTableComponent } from '../../components/tasks-table/tasks-table';
 import { EditTaskDialog } from '../../dialogs/edit-task/edit-task';
 import { TasksService } from '../../services/tasks';
@@ -32,8 +28,6 @@ import { AuthService } from '../../services/auth';
 export class TasksPage {
     filterControl = new FormControl('');
     user: User | null = null;
-    total: number = 0;
-    filtered: number = 0;
     order: number = 1;
     
     constructor(private authService: AuthService, private tasksService: TasksService, private dialog: MatDialog) {
@@ -59,11 +53,7 @@ export class TasksPage {
 
     isInRole(roles: number[]) {
            return this.authService.isInRole(this.user, roles);
-    }
-
-    onCountsChange(counts: { total: number, filtered: number, order: number }) {
-        this.total = counts.total;
-        this.filtered = counts.filtered;
+    }    onCountsChange(counts: { total: number, filtered: number, order: number }) {
         this.order = counts.order;
     }
 }

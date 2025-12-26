@@ -41,8 +41,8 @@ export class TaskFormComponent {
         name: ['', Validators.required],
         team_id: [null, Validators.required],
         person_id: [null, Validators.required],
-        start_date: [null, [Validators.required , dateInRange(new Date('2000-01-01'), new Date('2100-12-31'))]],
-        end_date: [null, dateInRange(new Date('2000-01-01'), new Date('2100-12-31'))]
+        start_date: [null, [Validators.required , dateInRange(new Date('1900-01-01'), new Date('2100-12-31'))]],
+        end_date: [null, dateInRange(new Date('1900-01-01'), new Date('2100-12-31'))]
     });
 
     this.form.statusChanges.subscribe(() => {

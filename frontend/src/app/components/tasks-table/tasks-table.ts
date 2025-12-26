@@ -33,8 +33,6 @@ export class TasksTableComponent  {
       this._filter = value;
     }
   } // set private component _filter if parent component changes value of filter
-
-  @Output() countsChange = new EventEmitter<{ total: number, filtered: number, order: number }>();
   
   @ViewChild('tableContainer') tableContainer!: ElementRef<HTMLDivElement>;
 
