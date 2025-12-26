@@ -57,17 +57,27 @@ tasksRouter.get('/', requireRole([0, 1]), async (req: Request, res: Response) =>
   });
   
   
+// POST: Create new task
   tasksRouter.post('/', requireRole([0]), async (req: Request, res: Response) => {
-    const { name, team_id, person_id, start_date, end_date } = req.body; // assume body has correct shape so name is present
-    await db!.connection!.exec('BEGIN IMMEDIATE'); // start transaction
+    const { name, team_id, person_id, start_date, end_date } = req.body; 
     try {
-      const newTask = new Task(name, team_id, person_id, start_date, end_date);
+      const teamIdNum = parseInt(team_id, 10);
+      const personIdNum = parseInt(person_id, 10);
+
+      const startDateObj = new Date(start_date);
+      const endDateObj = (end_date && end_date !== 'null') ? new Date(end_date) : undefined;
+
+      const newTask = new Task(name, teamIdNum, personIdNum, startDateObj, endDateObj);
+      
+      const startDateTimestamp = startDateObj.getTime();
+      const endDateTimestamp = endDateObj ? endDateObj.getTime() : null;
+
       const addedTask = await db!.connection!.get('INSERT INTO tasks (name, team_id, person_id, start_date, end_date) VALUES (?, ?, ?, ?, ?) RETURNING *',
-        newTask.name, newTask.team_id, newTask.person_id, newTask.start_date, newTask.end_date
+        newTask.name, newTask.team_id, newTask.person_id, startDateTimestamp, endDateTimestamp
       );
       res.json(addedTask);
     } catch (error: Error | any) {
-      throw new HttpError(400, 'Cannot add task: ' + error.message); // bad request; validation or database error
+      throw new HttpError(400, 'Cannot add task: ' + error.message); 
     }
   });
   
@@ -77,19 +87,28 @@ tasksRouter.get('/', requireRole([0, 1]), async (req: Request, res: Response) =>
       throw new HttpError(400, 'ID was not provided correctly');
     }
     try {
-      const taskToUpdate = new Task(name, team_id, person_id, start_date, end_date);
-      taskToUpdate.id = id;  // retain the original id
+      const teamIdNum = parseInt(team_id, 10);
+      const personIdNum = parseInt(person_id, 10);
+
+      const startDateObj = new Date(start_date);
+      const endDateObj = (end_date && end_date !== 'null') ? new Date(end_date) : undefined;
+
+      const taskToUpdate = new Task(name, teamIdNum, personIdNum, startDateObj, endDateObj);
+      taskToUpdate.id = id; 
+      
+      const startDateTimestamp = startDateObj.getTime();
+      const endDateTimestamp = endDateObj ? endDateObj.getTime() : null;
+
       const updatedTask = await db.connection?.get('UPDATE tasks SET name = ?, team_id = ?, person_id = ?, start_date = ?, end_date = ? WHERE id = ? RETURNING *',
-        taskToUpdate.name, taskToUpdate.team_id, taskToUpdate.person_id, taskToUpdate.start_date, taskToUpdate.end_date, taskToUpdate.id
+        taskToUpdate.name, taskToUpdate.team_id, taskToUpdate.person_id, startDateTimestamp, endDateTimestamp, taskToUpdate.id
       );
       if (updatedTask) {
-        res.json(updatedTask); // return the updated task
+        res.json(updatedTask); 
       } else {
         throw new HttpError(404, 'Task to update not found');
       }
     } catch (error: Error | any) {
-      await db!.connection!.exec('ROLLBACK');
-      throw new HttpError(400, 'Cannot update person: ' + error.message);  
+      throw new HttpError(400, 'Cannot update task: ' + error.message);  
     }
   });
   

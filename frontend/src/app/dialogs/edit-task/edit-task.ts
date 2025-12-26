@@ -1,6 +1,7 @@
 import { Component, Inject, ViewChild } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatButtonModule } from '@angular/material/button';
 import { TaskFormComponent } from '../../components/task-form/task-form';
 import { Task } from '../../models/task';
 import { TasksService } from '../../services/tasks';
@@ -8,10 +9,11 @@ import { TasksService } from '../../services/tasks';
 @Component({
   selector: 'edit-task',
   standalone: true,
-  imports: [ MatDialogModule, TaskFormComponent ],
+  imports: [ MatDialogModule, MatButtonModule, TaskFormComponent ],
   templateUrl: './edit-task.html',
   styleUrls: ['./edit-task.scss']
 })
+
 export class EditTaskDialog {
 
     @ViewChild(TaskFormComponent) taskForm!: TaskFormComponent;

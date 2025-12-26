@@ -36,7 +36,7 @@ export class TasksPage {
     filtered: number = 0;
     order: number = 1;
     
-    constructor(private authService: AuthService, private personsService: PersonsService, private dialog: MatDialog) {
+    constructor(private authService: AuthService, private tasksService: TasksService, private dialog: MatDialog) {
         this.authService.currentUser$.subscribe(user => { this.user = user });
         this.filterControl.valueChanges.
             pipe(debounceTime(200)).
@@ -59,5 +59,11 @@ export class TasksPage {
 
     isInRole(roles: number[]) {
            return this.authService.isInRole(this.user, roles);
+    }
+
+    onCountsChange(counts: { total: number, filtered: number, order: number }) {
+        this.total = counts.total;
+        this.filtered = counts.filtered;
+        this.order = counts.order;
     }
 }

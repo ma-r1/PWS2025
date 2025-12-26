@@ -9,11 +9,11 @@
 
       <div class="spacer"></div>
 
-      <button mat-icon-button [matBadge]="filtered" matBadgePosition="above after" class="badge-spacing" [hidden]="total == filtered" (click)="makeReport(false)">
+      <button mat-icon-button [matBadge]="filtered" matBadgePosition="above after" class="badge-spacing" [hidden]="total == filtered">
         <mat-icon>filter_alt</mat-icon>
       </button>
 
-      <button mat-icon-button [matBadge]="total" matBadgePosition="above after" class="badge-spacing" (click)="makeReport(true)">
+      <button mat-icon-button [matBadge]="total" matBadgePosition="above after" class="badge-spacing">
         <mat-icon>assignment</mat-icon>
       </button>
 

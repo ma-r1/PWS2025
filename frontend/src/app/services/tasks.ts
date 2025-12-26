@@ -17,9 +17,9 @@ export class TasksService {
 
   constructor(private http: HttpClient) {}
 
-  getTasks(filter: string = '', limit: number = 10, offset: number = 0, order: number = 0): Observable<Task[]> {
-    const params = new HttpParams().set('q', filter).set('limit', limit).set('offset', offset).set('order', order); // add query parameters
-    return this.http.get<Task[]>(this.apiUrl, { params });
+  getTasks(filter: string = '', order: number = 0): Observable<Task[]> {
+      const params = new HttpParams().set('q', filter).set('order', order);
+      return this.http.get<Task[]>(this.apiUrl, { params });
   }
 
   newTask(task: Task): Observable<Task> {

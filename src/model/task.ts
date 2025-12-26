@@ -14,8 +14,8 @@ export class Task {
       throw new HttpError(400, 'Name was not provided correctly');
     if( !start_date || !(start_date instanceof Date) || isNaN(start_date.getTime()))
       throw new HttpError(400, 'Start date was not provided correctly');
-    if ((!(end_date instanceof Date) || isNaN(end_date.getTime())) || (end_date && end_date < start_date) || (end_date && end_date >= new Date()))
-      throw new HttpError(400, 'End date was not provided correctly');
+    if (end_date && (!(end_date instanceof Date) || isNaN(end_date.getTime()) || (end_date < start_date))) 
+      throw new HttpError(400, 'End date was not provided correctly'); 
     if (typeof team_id !== 'number' || team_id <= 0) //TODO: check if team exists
       throw new HttpError(400, 'Team ID was not provided correctly');
     if (typeof person_id !== 'number' || person_id <= 0) //TODO: check if person exists in team

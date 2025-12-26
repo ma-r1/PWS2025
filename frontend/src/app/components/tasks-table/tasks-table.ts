@@ -1,42 +1,58 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input } from '@angular/core';
-import { MatTableModule } from '@angular/material/table';
 import { Subscription } from 'rxjs';
-import { MatDialog } from '@angular/material/dialog';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { Component, ElementRef, Input, ViewChild, OnDestroy, Output, EventEmitter } from '@angular/core';
+import { MatTableModule } from '@angular/material/table';
 import { MatSortModule, Sort } from '@angular/material/sort';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatDialog } from '@angular/material/dialog';
 
-import { Task } from '../../models/task'
-import { TaskService } from '../../services/tasks';
+import { Task } from '../../models/task';
+import { TasksService } from '../../services/tasks';
 import { EditTaskDialog } from '../../dialogs/edit-task/edit-task';
 import { User } from '../../models/user';
 import { AuthService } from '../../services/auth';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 @Component({
   selector: 'tasks-table',
   templateUrl: './tasks-table.html',
   styleUrls: ['./tasks-table.scss'],
-  imports: [CommonModule, MatSortModule, MatTableModule, MatChipsModule, MatProgressSpinnerModule],
+  imports: [CommonModule, MatTableModule, MatSortModule, MatChipsModule, MatProgressSpinnerModule],
   standalone: true
 })
-export class TasksTableComponent {
+export class TasksTableComponent  {
   displayedColumns: string[] = ['id', 'name', 'team_id', 'person_id', 'start_date', 'end_date'];
   tasks: Task[] = [];
   private sub?: Subscription;
 
+  private _filter: string = '';
+  @Input()
+  set filter(value: string) {
+    if (value !== this._filter) {
+      this._filter = value;
+    }
+  } // set private component _filter if parent component changes value of filter
+
+  @Output() countsChange = new EventEmitter<{ total: number, filtered: number, order: number }>();
+  
+  @ViewChild('tableContainer') tableContainer!: ElementRef<HTMLDivElement>;
+
   user: User | null = null;
   loading: boolean = false;
-  timestamp = Date.now();
   order: number = 1;
+  timestamp = Date.now();
 
-  @Input() filter: string = '';
-  
-  constructor(private authService: AuthService,, private tasksService: TaskService, private dialog: MatDialog, private snackBar: MatSnackBar) {
-    this.authService.currentUser$.subscribe(user => { this.user = user });
+
+  constructor(
+    private authService: AuthService,
+    private tasksService: TasksService,
+    private dialog: MatDialog,
+    private snackBar: MatSnackBar
+  ) {
+    this.authService.currentUser$.subscribe(user => { this.user = user; });
   }
-  
+
   ngOnInit() {
     this.sub = this.tasksService.reload$.subscribe(() => this.loadData());
   }
@@ -59,16 +75,16 @@ export class TasksTableComponent {
   }
 
   openDialog(row: Task | null) {
-    if (!this.isInRole([0])) return;
-    const dialogRef = this.dialog.open(EditTaskDialog, {
-      width: '75%',
-      data: { row }
-    });
-    dialogRef.afterClosed().subscribe(result => {
-      if(result) {
-        this.timestamp = Date.now();
-      }
-    });
+      if (!this.isInRole([0])) return;
+      const dialogRef = this.dialog.open(EditTaskDialog, {
+        width: '75%',
+        data: { row }
+      });
+      dialogRef.afterClosed().subscribe(result => {
+        if(result) {
+          this.timestamp = Date.now();
+        }
+      });
   }
 
   ngOnDestroy() {
@@ -78,6 +94,7 @@ export class TasksTableComponent {
   isInRole(roles: number[]) {
     return this.authService.isInRole(this.user, roles);
   }
+
 
   onSortChange(sort: Sort) {
     const columnNo = parseInt(sort.active);
