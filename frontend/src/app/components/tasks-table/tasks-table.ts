@@ -27,14 +27,8 @@ export class TasksTableComponent  {
   tasks: Task[] = [];
   private sub?: Subscription;
 
-  private _filter: string = '';
-  @Input()
-  set filter(value: string) {
-    if (value !== this._filter) {
-      this._filter = value;
-    }
-  } // set private component _filter if parent component changes value of filter
-  
+  @Input() filter: string = '';
+
   @ViewChild('tableContainer') tableContainer!: ElementRef<HTMLDivElement>;
   getContrastColor: (color: string) => string;
   user: User | null = null;

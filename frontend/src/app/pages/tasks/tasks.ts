@@ -40,20 +40,17 @@ export class TasksPage {
     }
 
     openDialog() {
-        const dialogRef = this.dialog.open(EditTaskDialog, { // new person dialog
-            width: '75%',
-            minWidth: '800px',
-            data: { row: null }
-        });
-        dialogRef.afterClosed().subscribe(result => {
-            if(!result) return;
-            this.filterControl.patchValue(result + ' '); // display only record just added
-        });
+            const dialogRef = this.dialog.open(EditTaskDialog, {
+                width: '75%',
+                data: { row: null }
+            });
+            dialogRef.afterClosed().subscribe(result => {
+                if(!result) return;
+                this.filterControl.patchValue(result + ' '); // display only record just added
+            });
     }
 
     isInRole(roles: number[]) {
            return this.authService.isInRole(this.user, roles);
-    }    onCountsChange(counts: { total: number, filtered: number, order: number }) {
-        this.order = counts.order;
-    } //TODO filter not working :c
+    }
 }

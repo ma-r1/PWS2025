@@ -3,7 +3,6 @@ import { Router, Request, Response } from "express";
 import { HttpError } from "../helpers/errors";
 import { db, taskTableDef } from "../helpers/db";
 import { Task } from "../model/task";
-import { deleteUploadedFile } from "../helpers/fileupload";
 import { requireRole } from "../helpers/auth";
 
 export const tasksRouter = Router();
@@ -22,21 +21,18 @@ tasksRouter.get('/', requireRole([0, 1]), async (req: Request, res: Response) =>
   
     const q = req.query.q as string;
     const { total } = await db.connection!.get("SELECT COUNT(1) AS total FROM tasks");
-    let filtered = total;
     if (q) { // filter query provided
-      let concat = Object.entries(taskTableDef.columns)
-        .filter(([_name, def]) => !('skipFiltering' in def && def.skipFiltering))
-        .map(([name, def]) => {
-          if (def.type === 'DATE') {
-            // special handling of date by conversion from unix timestamp in ms to YYYY-MM-DD
-            return `COALESCE(strftime('%Y-%m-%d', ${taskTableDef.name}.${name} / 1000, 'unixepoch'),'')`;
-          }
-          return `COALESCE(${taskTableDef.name}.${name},'')`; // coalesce is needed to protect against potential null-values
-        }).join(" || ' ' || ");
-      query += ' WHERE ' + concat + ' LIKE ?';
-      sqlParams.push(`%${q.replace(/'/g, "''")}%`);
-      const row  = await db.connection!.get(`SELECT COUNT(1) AS filtered FROM (${query}) f`, sqlParams);
-      filtered = row.filtered;
+        let concat = Object.entries(taskTableDef.columns)
+          .filter(([_name, def]) => !('skipFiltering' in def && def.skipFiltering))
+          .map(([name, def]) => {
+            if (def.type === 'DATE') {
+              // special handling of date by conversion from unix timestamp in ms to YYYY-MM-DD
+              return `COALESCE(strftime('%Y-%m-%d', ${taskTableDef.name}.${name} / 1000, 'unixepoch'),'')`;
+            }
+            return `COALESCE(${taskTableDef.name}.${name},'')`; // coalesce is needed to protect against potential null-values
+          }).join(" || ' ' || ");
+        query += ' WHERE ' + concat + ' LIKE ?';
+        sqlParams.push(`%${q.replace(/'/g, "''")}%`);
     }
     const order = parseInt(req.query.order as string, 10);
     if (order > 0 && order <= Object.keys(taskTableDef.columns).length) { // order column provided; order cannot be parameterized
