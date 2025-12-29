@@ -10,16 +10,30 @@ import { MatSelectModule } from '@angular/material/select';
 
 import { Task } from '../../models/task'
 
-function dateInRange(lower: Date, upper: Date): ValidatorFn {
+function dateInRange(min: Date | string, max: Date | string): ValidatorFn {
   return (control: AbstractControl): ValidationErrors | null => {
     if (!control.value) return null;
-    const valueDate = new Date(control.value);
-    if (isNaN(valueDate.getTime())) {
-      return { invalidDate: true };
-    }
-    if (valueDate < lower || valueDate > upper) return { dateOutOfRange: { lower, upper } };
+    
+    const current = new Date(control.value);
+    const group = control.parent;
+
+    const resolveDate = (param: Date | string) => {
+      if (param instanceof Date) return param;
+      if (typeof param === 'string' && group) {
+        const val = group.get(param)?.value;
+        return val ? new Date(val) : null;
+      }
+      return null;
+    };
+
+    const minDate = resolveDate(min);
+    const maxDate = resolveDate(max);
+
+    if (minDate && current < minDate) return { dateInRange: true, reason: 'too_early' };
+    if (maxDate && current > maxDate) return { dateInRange: true, reason: 'too_late' };
+
     return null;
-  }
+  };
 }
 
 @Component({
@@ -36,19 +50,28 @@ export class TaskFormComponent {
   
   form: FormGroup;
 
+  minLimit = new Date('1900-01-01');
+  today = new Date();
+
   constructor(private fb: FormBuilder) {
     this.form = this.fb.group({
-        name: ['', Validators.required],
-        team_id: [null, Validators.required],
-        person_id: [null, Validators.required],
-        start_date: [null, [Validators.required , dateInRange(new Date('1900-01-01'), new Date('2100-12-31'))]],
-        end_date: [null, dateInRange(new Date('1900-01-01'), new Date('2100-12-31'))]
+      name: ['', Validators.required],
+      team_id: [null, Validators.required],
+      person_id: [null, Validators.required],
+      start_date: [null, [ Validators.required, dateInRange(this.minLimit, this.today)]],
+      end_date: [null, [Validators.required, dateInRange('start_date', this.today) 
+      ]]
     });
 
     this.form.statusChanges.subscribe(() => {
       this.validChange.emit(this.form.valid);
     });
+  }
 
+  ngOnInit() {
+    this.form.get('start_date')?.valueChanges.subscribe(() => {
+      this.form.get('end_date')?.updateValueAndValidity();
+    });
   }
 
   ngOnChanges(changes: SimpleChanges) {

@@ -162,15 +162,17 @@ export async function createSchemaAndData(): Promise<void> {
   const tasksNum: number = parseInt(process.env.DBFAKETASKS || '10') || 10;
   for(let i = 0; i < tasksNum; i++) { 
     const name = faker.company.name();
-    await db.connection!.run('INSERT INTO tasks (name, team_id, person_id, start_date, end_date) VALUES (?, ?, ?, ?, ?)',
+    const startDate = faker.date.past(); 
+    const endDate = faker.date.between({ from: startDate, to: new Date() });
+    await db.connection!.run(
+      'INSERT INTO tasks (name, team_id, person_id, start_date, end_date) VALUES (?, ?, ?, ?, ?)',
       name,
       Math.floor(Math.random() * teamsNum) + 1,
       Math.floor(Math.random() * personNum) + 1,
-      faker.date.past(),
-      faker.date.future()
+      startDate,
+      endDate
     );
   }
   console.log(`${tasksNum} fake tasks data created`);
-
   }
 
