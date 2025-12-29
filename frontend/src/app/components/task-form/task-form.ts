@@ -9,6 +9,12 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatSelectModule } from '@angular/material/select';
 
 import { Task } from '../../models/task'
+import { ColorsService } from '../../services/colors';
+import { PersonsService } from '../../services/persons';
+import { TeamsService } from '../../services/teams';
+import { Person } from '../../models/person';
+import { Team } from '../../models/team';
+
 
 function dateInRange(min: Date | string, max: Date | string): ValidatorFn {
   return (control: AbstractControl): ValidationErrors | null => {
@@ -48,12 +54,14 @@ export class TaskFormComponent {
   @Input() row!: Task | null;
   @Output() validChange = new EventEmitter<boolean>();
   
+  getContrastColor: (color: string) => string;
   form: FormGroup;
-
   minLimit = new Date('1900-01-01');
   today = new Date();
+  teams: Team[] = [];
+  teamsMap: Record<number, Team> = {};
 
-  constructor(private fb: FormBuilder) {
+  constructor(private fb: FormBuilder, private ps: PersonsService, private ts: TeamsService, private cs: ColorsService) {
     this.form = this.fb.group({
       name: ['', Validators.required],
       team_id: [null, Validators.required],
@@ -66,9 +74,16 @@ export class TaskFormComponent {
     this.form.statusChanges.subscribe(() => {
       this.validChange.emit(this.form.valid);
     });
+
+    this.getContrastColor = this.cs.getContrastColor;
+
   }
 
   ngOnInit() {
+    this.ts.getTeams("", 3).subscribe(teams => {
+      this.teams = teams;
+      this.teamsMap = Object.fromEntries(this.teams.map(t => [t.id, t]));
+    });
     this.form.get('start_date')?.valueChanges.subscribe(() => {
       this.form.get('end_date')?.updateValueAndValidity();
     });
@@ -76,11 +91,8 @@ export class TaskFormComponent {
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['row'] && this.row) {
-      // It is safer to convert the string dates to Date objects BEFORE patching the whole object
-      // or patch the specific date fields afterward (which you are doing, but let's ensure it's clean)
-      
       this.form.patchValue({
-          ...this.row, // patch scalar values (name, ids)
+          ...this.row,
           start_date: this.row.start_date ? new Date(this.row.start_date) : null,
           end_date: this.row.end_date ? new Date(this.row.end_date) : null
       });
