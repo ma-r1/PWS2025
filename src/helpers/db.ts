@@ -16,13 +16,13 @@ export async function openDb(): Promise<void> {
     filename: process.env.DBFILE || './db/data.sqlite3',
     driver: sqlite3.Database
   });
+  await db.connection.exec('PRAGMA foreign_keys = ON'); // to enforce FOREIGN KEY constraints checking
   const { user_version } = await db.connection.get('PRAGMA user_version;') // get current db version
   if(!user_version) { // fresh database
     await db.connection!.exec('PRAGMA user_version = 1;');
     console.log('Reinitialize content...');
     await createSchemaAndData();
   }
-  await db.connection.exec('PRAGMA foreign_keys = ON'); // to enforce FOREIGN KEY constraints checking
 }
 
 export const personTableDef = {
@@ -104,15 +104,23 @@ function createTableStatement(def: {
   return `CREATE TABLE IF NOT EXISTS ${def.name} (\n ${cols.join(',\n ')} \n);`;
 }
 
-// helper function to create shortcut from long name
-function initials(name: string): string {
-  return name.split(/[\s,&]+/).filter(word => /^[A-Z]/.test(word)).map(word => word[0]).join('');
+function initials(name: string) {
+  return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
 }
 
 export async function createSchemaAndData(): Promise<void> {
+  console.log('Dropping old tables...');
+  await db.connection!.exec(`
+    DROP TABLE IF EXISTS tasks;
+    DROP TABLE IF EXISTS memberships;
+    DROP TABLE IF EXISTS teams;
+    DROP TABLE IF EXISTS persons;
+  `);
+
   const createPersonsStatement = createTableStatement(personTableDef);
   await db.connection!.run(createPersonsStatement);
   console.log('Persons table created');
+  
   const personNum: number = parseInt(process.env.DBFAKEPERSONS || '1000');
   for(let i = 0; i < personNum; i++) {
     const options = {
@@ -135,6 +143,7 @@ export async function createSchemaAndData(): Promise<void> {
   const createTeamsStatement = createTableStatement(teamTableDef);
   await db.connection!.run(createTeamsStatement);
   console.log('Teams table created');
+  
   const teamsNum: number = parseInt(process.env.DBFAKETEAMS || '10') || 10;
   for(let i = 0; i < teamsNum; i++) { 
     const name = faker.company.name();
@@ -149,30 +158,43 @@ export async function createSchemaAndData(): Promise<void> {
 
   const createMembershipsStatement = createTableStatement(membershipTableDef);
   await db.connection!.run(createMembershipsStatement);
-  for(let membership of [
-    [1,1], [1,2], [2,1], [2,3], [3,1], [3,2], [3,3], [3,4], [4,1], [5,1]
-  ]) {
-    await db.connection!.run('INSERT INTO memberships (person_id, team_id) VALUES (?, ?)', ...membership);
-  }
-  console.log('Memberships table created with sample data');
-
-  const createTasksStatement = createTableStatement(taskTableDef);
-  await db.connection!.run(createTasksStatement);
-  console.log('Tasks table created');
-  const tasksNum: number = parseInt(process.env.DBFAKETASKS || '10') || 10;
-  for(let i = 0; i < tasksNum; i++) { 
-    const name = faker.company.name();
-    const startDate = faker.date.past(); 
-    const endDate = faker.date.between({ from: startDate, to: new Date() });
-    await db.connection!.run(
-      'INSERT INTO tasks (name, team_id, person_id, start_date, end_date) VALUES (?, ?, ?, ?, ?)',
-      name,
-      Math.floor(Math.random() * teamsNum) + 1,
-      Math.floor(Math.random() * personNum) + 1,
-      startDate,
-      endDate
-    );
-  }
-  console.log(`${tasksNum} fake tasks data created`);
+  
+  const sampleMemberships = [[1,1], [1,2], [2,1], [2,3], [3,1], [3,2], [3,3], [3,4], [4,1], [5,1]];
+  for(let membership of sampleMemberships) {
+    await db.connection!.run('INSERT OR IGNORE INTO memberships (person_id, team_id) VALUES (?, ?)', ...membership);
   }
 
+  for (let pId = 6; pId <= personNum; pId++) {
+    const randomTeamId = Math.floor(Math.random() * teamsNum) + 1;
+    await db.connection!.run('INSERT INTO memberships (person_id, team_id) VALUES (?, ?)', pId, randomTeamId);
+  }
+  console.log('Memberships table created with sample and random data');
+
+  await db.connection!.run(createTableStatement(taskTableDef));
+  
+  const validPairs = await db.connection!.all<{person_id: number, team_id: number}[]>('SELECT person_id, team_id FROM memberships');
+
+  if (validPairs.length > 0) {
+    const tasksNum: number = parseInt(process.env.DBFAKETASKS || '50') || 50;
+    
+    for(let i = 0; i < tasksNum; i++) { 
+      const name = faker.hacker.verb() + ' ' + faker.hacker.noun(); // Short task names
+      const startDate = faker.date.past(); 
+      const endDate = faker.date.between({ from: startDate, to: new Date() });
+
+      const pair = validPairs[Math.floor(Math.random() * validPairs.length)];
+
+      await db.connection!.run(
+        'INSERT INTO tasks (name, team_id, person_id, start_date, end_date) VALUES (?, ?, ?, ?, ?)',
+        name,
+        pair.team_id,
+        pair.person_id,
+        startDate,
+        endDate
+      );
+    }
+    console.log(`${tasksNum} fake tasks created`);
+  }
+}
+
+// Helper for initials

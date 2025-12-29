@@ -59,13 +59,16 @@ export class TaskFormComponent {
   minLimit = new Date('1900-01-01');
   today = new Date();
   teams: Team[] = [];
+  persons: Person[] = [];
   teamsMap: Record<number, Team> = {};
+  personsMap: Record<number, Person> = {};
+  isEditModeLoading = false;
 
   constructor(private fb: FormBuilder, private ps: PersonsService, private ts: TeamsService, private cs: ColorsService) {
     this.form = this.fb.group({
       name: ['', Validators.required],
       team_id: [null, Validators.required],
-      person_id: [null, Validators.required],
+      person_id: [{ value: null, disabled: true }, Validators.required],
       start_date: [null, [ Validators.required, dateInRange(this.minLimit, this.today)]],
       end_date: [null, [Validators.required, dateInRange('start_date', this.today) 
       ]]
@@ -84,19 +87,48 @@ export class TaskFormComponent {
       this.teams = teams;
       this.teamsMap = Object.fromEntries(this.teams.map(t => [t.id, t]));
     });
+
     this.form.get('start_date')?.valueChanges.subscribe(() => {
       this.form.get('end_date')?.updateValueAndValidity();
+    });
+
+    this.form.get('team_id')?.valueChanges.subscribe((teamId) => {
+      if (teamId) {
+        this.form.get('person_id')?.enable();
+        if (this.form.get('person_id')?.value && !this.isEditModeLoading) {
+             this.form.get('person_id')?.setValue(null);
+        }
+
+        this.loadPersons(teamId);
+      } else {
+        this.form.get('person_id')?.disable();
+        this.form.get('person_id')?.setValue(null);
+        this.persons = [];
+      }
+    });
+  }
+
+  loadPersons(teamId: number) {
+    this.ps.getPersons("", 1000, 0, 0, teamId).subscribe(data => {
+      this.persons = data.persons; 
     });
   }
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['row'] && this.row) {
+      this.isEditModeLoading = true;
+      if (this.row.team_id) {
+          this.loadPersons(this.row.team_id);
+          this.form.get('person_id')?.enable();
+      }
+
       this.form.patchValue({
           ...this.row,
           start_date: this.row.start_date ? new Date(this.row.start_date) : null,
           end_date: this.row.end_date ? new Date(this.row.end_date) : null
       });
 
+      this.isEditModeLoading = false;
       this.validChange.emit(this.form.valid);
     }
   }

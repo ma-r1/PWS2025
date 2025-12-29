@@ -60,12 +60,19 @@
                 </mat-form-field>
 
                 <mat-form-field appearance="outline" class="flex-field">
-                    <mat-label>Person ID</mat-label>
-                    <input matInput formControlName="person_id" placeholder="Person ID"/>
+                    <mat-label>Person</mat-label>
+                    <mat-select formControlName="person_id">
+                        @for (person of persons; track person.id) {
+                            <mat-option [value]="person.id">
+                                {{ person.firstname }} {{ person.lastname }}
+                            </mat-option>
+                        }
+                    </mat-select>
+                    
                     @if(form.get('person_id')?.invalid) {
-                        <mat-error>Person ID is required</mat-error>
+                        <mat-error>Person is required</mat-error>
                     }
-                </mat-form-field>  
+                </mat-form-field>
             </div>
 
         </mat-card-content>

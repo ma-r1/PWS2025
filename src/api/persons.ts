@@ -30,33 +30,45 @@ personsRouter.get('/', requireRole([0, 1]), async (req: Request, res: Response) 
         WHERE m.person_id = persons.id
       ) AS team_objects
     FROM persons
-`; // base query
+    `; // base query
 
   const sqlParams: any[] = [];
+  const conditions: string[] = [];
+
+  const teamId = req.query.team_id ? parseInt(req.query.team_id as string) : null;
+  if (teamId) {
+    conditions.push(`EXISTS (SELECT 1 FROM memberships m WHERE m.person_id = persons.id AND m.team_id = ?)`);
+    sqlParams.push(teamId);
+  }
 
   const q = req.query.q as string;
   const { total } = await db.connection!.get("SELECT COUNT(1) AS total FROM persons");
   let filtered = total;
+  
   if (q) { // filter query provided
     let concat = Object.entries(personTableDef.columns)
       .filter(([_name, def]) => !('skipFiltering' in def && def.skipFiltering))
       .map(([name, def]) => {
         if (def.type === 'DATE') {
-          // special handling of date by conversion from unix timestamp in ms to YYYY-MM-DD
           return `COALESCE(strftime('%Y-%m-%d', ${personTableDef.name}.${name} / 1000, 'unixepoch'),'')`;
         }
-        return `COALESCE(${personTableDef.name}.${name},'')`; // coalesce is needed to protect against potential null-values
+        return `COALESCE(${personTableDef.name}.${name},'')`;
       }).join(" || ' ' || ");
     concat += " || ' ' || COALESCE(team_objects,'')";
-    let selection = ' WHERE ' + concat + ' LIKE ?';
-    query += selection;
+    
+    conditions.push(concat + ' LIKE ?');
     sqlParams.push(`%${q.replace(/'/g, "''")}%`);
+  }
+
+  if (conditions.length > 0) {
+    query += ' WHERE ' + conditions.join(' AND ');
     const row  = await db.connection!.get(`SELECT COUNT(1) AS filtered FROM (${query}) f`, sqlParams);
     filtered = row.filtered;
   }
+
   const order = parseInt(req.query.order as string, 10);
-  if (order > 0 && order <= Object.keys(personTableDef.columns).length) { // order column provided; order cannot be parameterized
-    query += ` ORDER BY ${order} ASC`; // we have to build this part of query directly
+  if (order > 0 && order <= Object.keys(personTableDef.columns).length) { 
+    query += ` ORDER BY ${order} ASC`; 
   } else if (order < 0 && -order <= Object.keys(personTableDef.columns).length) {
     query += ` ORDER BY ${-order} DESC`;
   }
