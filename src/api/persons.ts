@@ -7,6 +7,28 @@ import { requireRole } from "../helpers/auth";
 
 export const personsRouter = Router();
 
+async function checkLeadership(personId: number): Promise<number[] | null> {
+  const rows = await db.connection!.all<{team_id:number}[]>(
+    'SELECT DISTINCT team_id FROM tasks WHERE person_id = ?',
+    personId
+  );
+  return rows.map(r => r.team_id);
+}
+
+async function checkTeamIdsChange(personId: number, team_ids: number[]): Promise<number[]> {
+  const currentRows = await db.connection!.all(
+    'SELECT team_id FROM memberships WHERE person_id = ?',
+    personId
+  );
+  const oldIds = currentRows!.map(r => r.team_id);
+
+  const newIds : number[] = Array.isArray(team_ids) ? [ ... new Set(team_ids)] : [];
+  
+  const removed = oldIds.filter(id => !newIds.includes(id));
+
+  return removed;
+}
+
 // persons endpoints
 personsRouter.get('/', requireRole([0, 1]), async (req: Request, res: Response) => {
   let query = `
@@ -121,6 +143,16 @@ personsRouter.put('/', requireRole([0]), async (req: Request, res: Response) => 
   }
   await db!.connection!.exec('BEGIN IMMEDIATE'); // start transaction
   try {
+    const changes = await checkTeamIdsChange(id, team_ids);
+    const tasks = await checkLeadership(id);
+    if (changes.length > 0) {
+      for (const teamId of changes) {
+        if (tasks && tasks.includes(teamId)) {
+          throw new HttpError(400, 'Cannot remove person from team they lead' );
+        }
+      }
+    }
+
     const personToUpdate = new Person(firstname, lastname, new Date(birthdate), email);
     personToUpdate.id = id;  // retain the original id
     // set team ids if provided
