@@ -79,7 +79,6 @@ export class TaskFormComponent {
     });
 
     this.getContrastColor = this.cs.getContrastColor;
-
   }
 
   ngOnInit() {

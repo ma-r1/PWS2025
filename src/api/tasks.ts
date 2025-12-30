@@ -7,6 +7,29 @@ import { requireRole } from "../helpers/auth";
 
 export const tasksRouter = Router();
 
+async function checkMembership(personId: number, teamId: number): Promise<void> {
+  const membership = await db.connection!.get(
+    'SELECT 1 FROM memberships WHERE person_id = ? AND team_id = ?',
+    personId, 
+    teamId
+  );
+
+  if (!membership) {
+    throw new HttpError(400, `Person ${personId} is not a member of Team ${teamId}`);
+  }
+}
+
+async function checkTeamExists(teamId: number): Promise<void> {
+  const team = await db.connection!.get(
+    'SELECT 1 FROM teams WHERE id = ?',
+    teamId
+  );
+
+  if (!team) {
+    throw new HttpError(400, `Team with ID ${teamId} does not exist`);
+  }
+}
+
 // teams endpoints
 tasksRouter.get('/', requireRole([0, 1]), async (req: Request, res: Response) => {
   let query = `
@@ -58,6 +81,10 @@ tasksRouter.get('/', requireRole([0, 1]), async (req: Request, res: Response) =>
 // POST: Create new task
   tasksRouter.post('/', requireRole([0]), async (req: Request, res: Response) => {
     const { name, team_id, person_id, start_date, end_date } = req.body; 
+    
+    await checkTeamExists(parseInt(team_id, 10));
+    await checkMembership(parseInt(person_id, 10), parseInt(team_id, 10));
+
     try {
       const teamIdNum = parseInt(team_id, 10);
       const personIdNum = parseInt(person_id, 10);
@@ -84,6 +111,10 @@ tasksRouter.get('/', requireRole([0, 1]), async (req: Request, res: Response) =>
     if (typeof id !== 'number' || id <= 0) {
       throw new HttpError(400, 'ID was not provided correctly');
     }
+
+    await checkTeamExists(parseInt(team_id, 10));
+    await checkMembership(parseInt(person_id, 10), parseInt(team_id, 10));
+    
     try {
       const teamIdNum = parseInt(team_id, 10);
       const personIdNum = parseInt(person_id, 10);
