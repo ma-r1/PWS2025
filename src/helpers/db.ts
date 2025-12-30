@@ -146,7 +146,7 @@ export async function createSchemaAndData(): Promise<void> {
   
   const teamsNum: number = parseInt(process.env.DBFAKETEAMS || '10') || 10;
   for(let i = 0; i < teamsNum; i++) { 
-    const name = faker.company.name();
+    const name = faker.commerce.department() + ' ' + faker.person.jobTitle();
     await db.connection!.run('INSERT INTO teams (name, longname, color, has_avatar) VALUES (?, ?, ?, ?)',
       initials(name),
       name,
@@ -178,7 +178,7 @@ export async function createSchemaAndData(): Promise<void> {
     const tasksNum: number = parseInt(process.env.DBFAKETASKS || '50') || 50;
     
     for(let i = 0; i < tasksNum; i++) { 
-      const name = faker.hacker.verb() + ' ' + faker.hacker.noun(); // Short task names
+      const name = faker.animal.petName() + ' ' + faker.color.human(); // Short task names
       const startDate = faker.date.past(); 
       const endDate = faker.date.between({ from: startDate, to: new Date() });
 

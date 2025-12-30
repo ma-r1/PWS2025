@@ -1,4 +1,12 @@
 @if(isInRole([0,1])) {
+
+  <div class="page-container"> 
+    <gant-chart
+        [tasks]="tasks" 
+        [teams]="teams">
+  </gant-chart>
+  </div>
+
   <div>
     <div class="controls-container">
       @if(isInRole([0])) {

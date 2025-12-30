@@ -8,6 +8,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatSelectModule } from '@angular/material/select';
 
+import { GantChart } from '../gant-chart/gant-chart';
 import { Task } from '../../models/task'
 import { ColorsService } from '../../services/colors';
 import { PersonsService } from '../../services/persons';
