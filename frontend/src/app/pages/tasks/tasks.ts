@@ -32,7 +32,7 @@ import { GantChart } from '../../components/gant-chart/gant-chart';
 })
 
 export class TasksPage {
-    filterControl = new FormControl('');
+    filterControl = new FormControl<number | null>(null);
     user: User | null = null;
     order: number = 1;
 
@@ -55,14 +55,18 @@ export class TasksPage {
         this.teams = teams;
       });
 
-      this.tasksService.getTasks('', 0).subscribe(tasks => {
+      this.tasksService.getTasks(null, 0).subscribe(tasks => {
         this.tasks = tasks;
       });
 
       this.relodadSubscription = this.tasksService.reload$.subscribe(() => {
-        this.tasksService.getTasks(this.filterControl.value || '', this.order).subscribe(tasks => {
-          this.tasks = tasks;
-        });
+        this.loadChartData();
+      });
+    }
+
+    loadChartData() {
+      this.tasksService.getTasks(this.filterControl.value, this.order).subscribe(tasks => {
+        this.tasks = tasks;
       });
     }
 

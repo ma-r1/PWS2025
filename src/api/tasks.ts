@@ -42,20 +42,12 @@ tasksRouter.get('/', requireRole([0, 1]), async (req: Request, res: Response) =>
 
   const sqlParams: any[] = [];
   
-    const q = req.query.q as string;
-    const { total } = await db.connection!.get("SELECT COUNT(1) AS total FROM tasks");
-    if (q) { // filter query provided
-        let concat = Object.entries(taskTableDef.columns)
-          .filter(([_name, def]) => !('skipFiltering' in def && def.skipFiltering))
-          .map(([name, def]) => {
-            if (def.type === 'DATE') {
-              // special handling of date by conversion from unix timestamp in ms to YYYY-MM-DD
-              return `COALESCE(strftime('%Y-%m-%d', ${taskTableDef.name}.${name} / 1000, 'unixepoch'),'')`;
-            }
-            return `COALESCE(${taskTableDef.name}.${name},'')`; // coalesce is needed to protect against potential null-values
-          }).join(" || ' ' || ");
-        query += ' WHERE ' + concat + ' LIKE ?';
-        sqlParams.push(`%${q.replace(/'/g, "''")}%`);
+  const rawTeamId = req.query.team_id ? parseInt(req.query.team_id as string) : NaN;
+  const teamId = !isNaN(rawTeamId) ? rawTeamId : null;
+    
+    if (teamId !== null) { 
+        query += ' WHERE team_id = ?';
+        sqlParams.push(teamId);
     }
     const order = parseInt(req.query.order as string, 10);
     if (order > 0 && order <= Object.keys(taskTableDef.columns).length) { // order column provided; order cannot be parameterized

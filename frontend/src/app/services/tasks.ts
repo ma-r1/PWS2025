@@ -17,10 +17,13 @@ export class TasksService {
 
   constructor(private http: HttpClient) {}
 
-  getTasks(filter: string = '', order: number = 0): Observable<Task[]> {
-      const params = new HttpParams().set('q', filter).set('order', order);
-      return this.http.get<Task[]>(this.apiUrl, { params });
-  }
+  getTasks(filter?: number | null , order: number = 0): Observable<Task[]> {
+    let params = new HttpParams().set('order', order);
+    if (filter != null) {
+      params = params.set('team_id', filter.toString());
+    }
+    return this.http.get<Task[]>(this.apiUrl, { params });
+}
 
   newTask(task: Task): Observable<Task> {
     return this.http.post<Task>(this.apiUrl, task);

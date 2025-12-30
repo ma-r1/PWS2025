@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
-import { Component, ElementRef, Input, ViewChild, OnDestroy, Output, EventEmitter } from '@angular/core';
+import { Component, ElementRef, Input, ViewChild, OnDestroy, Output, EventEmitter, SimpleChanges } from '@angular/core';
 import { MatTableModule } from '@angular/material/table';
 import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatChipsModule } from '@angular/material/chips';
@@ -8,7 +8,9 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog } from '@angular/material/dialog';
 
 import { Task } from '../../models/task';
+import { Team } from '../../models/team';
 import { TasksService } from '../../services/tasks';
+import { TeamsService } from '../../services/teams';
 import { EditTaskDialog } from '../../dialogs/edit-task/edit-task';
 import { User } from '../../models/user';
 import { AuthService } from '../../services/auth';
@@ -25,9 +27,11 @@ import { ColorsService } from '../../services/colors';
 export class TasksTableComponent  {
   displayedColumns: string[] = ['id', 'name', 'team', 'person', 'start_date', 'end_date'];
   tasks: Task[] = [];
+  teams: Team[] = [];
+  teamsMap: Record<number, Team> = {};
   private sub?: Subscription;
 
-  @Input() filter: string = '';
+  @Input() filter: number | null = null;
 
   @ViewChild('tableContainer') tableContainer!: ElementRef<HTMLDivElement>;
   getContrastColor: (color: string) => string;
@@ -40,7 +44,8 @@ export class TasksTableComponent  {
   constructor(
     private authService: AuthService,
     private tasksService: TasksService,
-        private colorsService: ColorsService,
+    private teamsService: TeamsService,
+    private colorsService: ColorsService,
     private dialog: MatDialog,
     private snackBar: MatSnackBar
   ) {
@@ -50,6 +55,16 @@ export class TasksTableComponent  {
 
   ngOnInit() {
     this.sub = this.tasksService.reload$.subscribe(() => this.loadData());
+    this.teamsService.getTeams('', 0).subscribe(teams => {
+        this.teams = teams;
+        this.teamsMap = Object.fromEntries(teams.map(t => [t.id, t]));
+      });
+  }
+
+  ngOnChanges(changes: SimpleChanges) {
+    if (changes['filter']) {
+      this.loadData();
+    }
   }
 
   loadData() {
