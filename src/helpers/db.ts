@@ -178,7 +178,8 @@ export async function createSchemaAndData(): Promise<void> {
     const tasksNum: number = parseInt(process.env.DBFAKETASKS || '50') || 50;
     
     for(let i = 0; i < tasksNum; i++) { 
-      const name = faker.animal.petName() + ' ' + faker.color.human(); // Short task names
+      const tempname = faker.food.adjective();
+      const name = tempname.charAt(0).toUpperCase() + tempname.slice(1) + ' ' + faker.animal.petName(); // Short task names
       const startDate = faker.date.past(); 
       const endDate = faker.date.between({ from: startDate, to: new Date() });
 
