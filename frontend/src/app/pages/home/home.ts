@@ -8,6 +8,8 @@ import { AuthService } from '../../services/auth';
 import { TeamsService } from '../../services/teams';
 import { User } from '../../models/user';
 import { CommonModule } from '@angular/common';
+import { WebsocketService, WSMessage } from '../../services/websocket';
+import { map, pipe, Subscription } from 'rxjs';
 
 @Component({
   selector: 'home-page',
@@ -19,6 +21,7 @@ import { CommonModule } from '@angular/common';
 export class HomePage {
 
   user: User | null = null;
+  private sub?: Subscription;
 
   @ViewChild(BaseChartDirective) chart?: BaseChartDirective;
   @HostListener('window:resize')
@@ -54,7 +57,7 @@ export class HomePage {
     }
   };
 
-  constructor(private authService: AuthService, private teamsService: TeamsService) {
+    constructor(private authService: AuthService, private teamsService: TeamsService, private websocketService: WebsocketService) {
     this.authService.currentUser$.subscribe(user => { 
       this.user = user;
       if(this.isInRole([0,1])) {
@@ -70,5 +73,17 @@ export class HomePage {
 
   isInRole(roles: number[]) {
     return this.authService.isInRole(this.user, roles);
+  }
+
+    ngOnInit(): void {
+    this.sub = this.websocketService.messages$.pipe(
+        map(msg => typeof msg === 'string' ? JSON.parse(msg) as WSMessage : msg)
+    ).subscribe(msg => {
+      console.log('WebSocket message received:', msg);
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.sub?.unsubscribe();
   }
 }

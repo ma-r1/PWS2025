@@ -4,6 +4,7 @@ import { BehaviorSubject, Observable, tap } from 'rxjs';
 
 import { User } from '../models/user';
 import { AppRoute } from '../app.routes';
+import { WebsocketService } from './websocket';
 
 @Injectable({
   providedIn: 'root'
@@ -16,17 +17,24 @@ export class AuthService {
   // Observable that components can subscribe to
   currentUser$ = this.currentUserSubject.asObservable();
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private websocketService: WebsocketService) {}
 
   whoami(): Observable<User> {
+    this.websocketService.close();
     return this.http.get<User>(this.apiUrl).pipe(
-      tap(user => this.currentUserSubject.next(user))
-    );
+      tap(user => {
+        this.currentUserSubject.next(user);
+        this.websocketService.connect();
+      }));
   }
 
   login(user: User): Observable<User> {
+    this.websocketService.close();
     return this.http.post<User>(this.apiUrl, user).pipe(
-      tap(user => this.currentUserSubject.next(user))
+      tap(user => {
+        this.currentUserSubject.next(user);
+        this.websocketService.connect();
+      })
     );
   }
 

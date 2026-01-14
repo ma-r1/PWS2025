@@ -211,3 +211,7 @@ body { margin: 1rem; font-family: Roboto, "Helvetica Neue", sans-serif; }
 .snackbar-success .mat-mdc-snackbar-surface {
     background-color: green !important;
 }
+
+.snackbar-warning .mat-mdc-snackbar-surface {
+    background-color: orange !important;
+}

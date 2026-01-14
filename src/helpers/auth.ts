@@ -7,8 +7,11 @@ import SQLiteStoreFactory from 'connect-sqlite3';
 import { User } from '../model/user';
 import { HttpError } from './errors';
 import { reloadUsers } from './sysdb';
+import { broadcast } from './websocket';
 
 export const authRouter = Router();
+
+export let sessionStore: session.Store;
 
 interface AuthRequest extends Request {
   user?: User;
@@ -60,13 +63,14 @@ export async function initAuth(app: Express, reset: boolean = false): Promise<vo
 
   // Middleware setup with persistent sessions
   const SQLiteStore = SQLiteStoreFactory(session);
+  sessionStore = new SQLiteStore({ db: process.env.SESSIONSDBFILE || './db/sessions.sqlite3' }) as session.Store;
   app.use(
     session({
       secret: process.env.SECRETKEY || 'mysecretkey',
       resave: false,
       saveUninitialized: false,
       // store sessions in sqlite database
-      store: new SQLiteStore({ db: process.env.SESSIONSDBFILE || './db/sessions.sqlite3' }) as session.Store,
+      store: sessionStore,
       cookie: { maxAge: 86400000 } // default 1 day
     })
   );
@@ -84,6 +88,14 @@ export async function initAuth(app: Express, reset: boolean = false): Promise<vo
 // Find user helpers
 function findUserById(id: number): User | undefined {
   return users.find((u) => { return u.id === id; });
+}
+
+// Exported version without password
+export function findUserByIdSafe(id: number): Omit<User, 'password'> | undefined {
+  const user = findUserById(id);
+  if (!user) return undefined;
+  const { password, ...safeUser } = user;
+  return safeUser;
 }
 
 function findUserByUsername(username: string): User | undefined {
@@ -104,6 +116,7 @@ passport.deserializeUser((id: number, done: (err: any, user?: User | false | nul
 
 authRouter.post('', passport.authenticate('json'), (req: Request, res: Response) => {
   const authReq = req as AuthRequest;
+  broadcast([ 0 ], { type: 'login', data: 'New user successfully logged in' });
   res.json({
     message: 'Logged in successfully',
     username: authReq.user?.username,
