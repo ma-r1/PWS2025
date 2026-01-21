@@ -20,8 +20,6 @@ export class Task {
     if (typeof team_id !== 'number' || team_id <= 0) //TODO: check if team exists
       throw new HttpError(400, 'Team ID was not provided correctly');
 
-    
-
     if (typeof person_id !== 'number' || person_id <= 0) //TODO: check if person exists in team
       throw new HttpError(400, 'Person ID was not provided correctly');
 
