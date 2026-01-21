@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 
 import { HttpError } from "../helpers/errors";
-import { db, taskTableDef } from "../helpers/db";
+import { db, taskTableDef, logChange } from "../helpers/db";
 import { Task } from "../model/task";
 import { requireRole } from "../helpers/auth";
 
@@ -73,7 +73,8 @@ tasksRouter.get('/', requireRole([0, 1]), async (req: Request, res: Response) =>
 // POST: Create new task
   tasksRouter.post('/', requireRole([0]), async (req: Request, res: Response) => {
     const { name, team_id, person_id, start_date, end_date } = req.body; 
-    
+    const user = (req as any).user?.username || 'unknown';
+
     await checkTeamExists(parseInt(team_id, 10));
     await checkMembership(parseInt(person_id, 10), parseInt(team_id, 10));
 
@@ -92,6 +93,9 @@ tasksRouter.get('/', requireRole([0, 1]), async (req: Request, res: Response) =>
       const addedTask = await db!.connection!.get('INSERT INTO tasks (name, team_id, person_id, start_date, end_date) VALUES (?, ?, ?, ?, ?) RETURNING *',
         newTask.name, newTask.team_id, newTask.person_id, startDateTimestamp, endDateTimestamp
       );
+
+      await logChange('tasks', 'INSERT', addedTask.id, null, addedTask, user);
+
       res.json(addedTask);
     } catch (error: Error | any) {
       throw new HttpError(400, 'Cannot add task: ' + error.message); 
@@ -100,6 +104,8 @@ tasksRouter.get('/', requireRole([0, 1]), async (req: Request, res: Response) =>
   
   tasksRouter.put('/', requireRole([0]), async (req: Request, res: Response) => {
     const { id, name, team_id, person_id, start_date, end_date } = req.body;
+    const user = (req as any).user?.username || 'unknown';
+
     if (typeof id !== 'number' || id <= 0) {
       throw new HttpError(400, 'ID was not provided correctly');
     }
@@ -108,6 +114,11 @@ tasksRouter.get('/', requireRole([0, 1]), async (req: Request, res: Response) =>
     await checkMembership(parseInt(person_id, 10), parseInt(team_id, 10));
     
     try {
+      const oldTask = await db.connection?.get('SELECT * FROM tasks WHERE id = ?', id);
+      if (!oldTask) {
+        throw new HttpError(404, 'Task to update not found');
+      }
+
       const teamIdNum = parseInt(team_id, 10);
       const personIdNum = parseInt(person_id, 10);
 
@@ -124,6 +135,7 @@ tasksRouter.get('/', requireRole([0, 1]), async (req: Request, res: Response) =>
         taskToUpdate.name, taskToUpdate.team_id, taskToUpdate.person_id, startDateTimestamp, endDateTimestamp, taskToUpdate.id
       );
       if (updatedTask) {
+        await logChange('tasks', 'UPDATE', updatedTask.id, oldTask, updatedTask, user);
         res.json(updatedTask); 
       } else {
         throw new HttpError(404, 'Task to update not found');
@@ -135,13 +147,16 @@ tasksRouter.get('/', requireRole([0, 1]), async (req: Request, res: Response) =>
   
   tasksRouter.delete('/', requireRole([0]), async (req: Request, res: Response) => {
     const id = parseInt(req.query.id as string, 10);
+    const user = (req as any).user?.username || 'unknown';
+
     if (isNaN(id) || id <= 0) {
       throw new HttpError(404, 'ID was not provided correctly');
     }
     const deletedTask = await db!.connection!.get('DELETE FROM tasks WHERE id = ? RETURNING *', id);
     if (deletedTask) {
+      await logChange('tasks', 'DELETE', deletedTask.id, deletedTask, null, user);
       res.json(deletedTask); // return the deleted task
     } else {
-      throw new HttpError(404, 'Team to delete not found');
+      throw new HttpError(404, 'Task to delete not found');
     }
   });

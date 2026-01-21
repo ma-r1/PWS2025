@@ -1,9 +1,10 @@
 import { Router, Request, Response } from "express";
 
 import { HttpError } from "../helpers/errors";
-import { db, personTableDef } from "../helpers/db";
+import { db, personTableDef, logChange } from "../helpers/db";
 import { Person } from "../model/person";
 import { requireRole } from "../helpers/auth";
+import { de } from "@faker-js/faker/.";
 
 export const personsRouter = Router();
 
@@ -119,6 +120,7 @@ async function setMembership(person_id: number, team_ids: number[]) {
 
 personsRouter.post('/', requireRole([0]), async (req: Request, res: Response) => {
   const { firstname, lastname, birthdate, email, team_ids } = req.body; // assume body has correct shape so name is present
+  const user = (req as any).user?.username || 'unknown';
   await db!.connection!.exec('BEGIN IMMEDIATE'); // start transaction
   try {
     const newPerson = new Person(firstname, lastname, new Date(birthdate), email);
@@ -128,6 +130,7 @@ personsRouter.post('/', requireRole([0]), async (req: Request, res: Response) =>
       newPerson.firstname, newPerson.lastname, newPerson.birthdate, newPerson.email
     );
     await setMembership(addedPerson.id, newPerson.team_ids);
+    await logChange('persons', 'INSERT', addedPerson.id, null, addedPerson, user);
     await db!.connection!.exec('COMMIT');
     res.json(addedPerson);
   } catch (error: Error | any) {
@@ -138,11 +141,17 @@ personsRouter.post('/', requireRole([0]), async (req: Request, res: Response) =>
 
 personsRouter.put('/', requireRole([0]), async (req: Request, res: Response) => {
   const { id, firstname, lastname, birthdate, email, team_ids } = req.body;
+  const user = (req as any).user?.username || 'unknown';
   if (typeof id !== 'number' || id <= 0) {
     throw new HttpError(400, 'ID was not provided correctly');
   }
   await db!.connection!.exec('BEGIN IMMEDIATE'); // start transaction
   try {
+    const oldPerson = await db.connection!.get('SELECT * FROM persons WHERE id = ?', id);
+    if (!oldPerson) {
+      await db!.connection!.exec('ROLLBACK');
+      throw new HttpError(404, 'Person to update not found');
+    }
     const changes = await checkTeamIdsChange(id, team_ids);
     const tasks = await checkLeadership(id);
     if (changes.length > 0) {
@@ -162,6 +171,7 @@ personsRouter.put('/', requireRole([0]), async (req: Request, res: Response) => 
     );
     if (updatedPerson) {
       await setMembership(updatedPerson.id, personToUpdate.team_ids);
+      await logChange('persons', 'UPDATE', updatedPerson.id, oldPerson, updatedPerson, user);
       await db!.connection!.exec('COMMIT');
       res.json(updatedPerson); // return the updated person
     } else {
@@ -176,6 +186,7 @@ personsRouter.put('/', requireRole([0]), async (req: Request, res: Response) => 
 
 personsRouter.delete('/', requireRole([0]), async (req: Request, res: Response) => {
   const id = parseInt(req.query.id as string, 10);
+  const user = (req as any).user?.username || 'unknown';
   if (isNaN(id) || id <= 0) {
     throw new HttpError(400, 'Cannot delete person');  
   }
@@ -184,6 +195,7 @@ personsRouter.delete('/', requireRole([0]), async (req: Request, res: Response) 
     // await setMembership(id, []); // remove all memberships
     const deletedPerson = await db!.connection!.get('DELETE FROM persons WHERE id = ? RETURNING *', id);
     if (deletedPerson) {
+      await logChange('persons', 'DELETE', deletedPerson.id, deletedPerson, null, user);
       await db!.connection!.exec('COMMIT');
       res.json(deletedPerson); // return the deleted person
     } else {
@@ -195,3 +207,4 @@ personsRouter.delete('/', requireRole([0]), async (req: Request, res: Response) 
     throw new HttpError(400, 'Cannot delete person: ' + error.message);  
   }
 });
+

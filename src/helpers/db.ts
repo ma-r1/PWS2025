@@ -76,6 +76,19 @@ export const taskTableDef = {
   ]
   };
 
+export const changeLogTableDef = {
+  name: 'change_logs',
+  columns: {
+    id: { type: 'INTEGER', primaryKey: true, autoincrement: true },
+    table_name: { type: 'TEXT', notNull: true },
+    operation_type: { type: 'TEXT', notNull: true },
+    record_id: { type: 'INTEGER', notNull: true },
+    timestamp: { type: 'DATETIME', notNull: true, default: "CURRENT_TIMESTAMP" },
+    diff: { type: 'TEXT' },
+    changed_by: { type: 'TEXT' }
+  }
+};
+
 
 function createTableStatement(def: { 
     name: string;
@@ -115,6 +128,7 @@ export async function createSchemaAndData(): Promise<void> {
     DROP TABLE IF EXISTS memberships;
     DROP TABLE IF EXISTS teams;
     DROP TABLE IF EXISTS persons;
+    DROP TABLE IF EXISTS change_logs;
   `);
 
   const createPersonsStatement = createTableStatement(personTableDef);
@@ -196,6 +210,46 @@ export async function createSchemaAndData(): Promise<void> {
     }
     console.log(`${tasksNum} fake tasks created`);
   }
+
+  const createChangeLogStatement = createTableStatement(changeLogTableDef);
+  await db.connection!.run(createChangeLogStatement);
+  console.log('Change logs table created');
 }
 
-// Helper for initials
+//function to automatically log changes in apis
+export async function logChange(
+  tableName: string,
+  operationType: 'INSERT' | 'UPDATE' | 'DELETE',
+  recordId: number,
+  oldData: any | null,
+  newData: any | null,
+  changedBy: string = 'unknown'
+): Promise<void> {
+  if (!db.connection) return;
+
+  let diffObj: any = {};
+
+  if (operationType === 'INSERT') {
+    diffObj = { after: newData };
+  } else if (operationType === 'DELETE') {
+    diffObj = { before: oldData };
+  } else if (operationType === 'UPDATE') {
+    diffObj = { before: oldData, after: newData };
+  }
+
+  try {
+    await db.connection.run(
+      `INSERT INTO change_logs (table_name, operation_type, record_id, diff, changed_by)
+       VALUES (?, ?, ?, ?, ?)`,
+      tableName,
+      operationType,
+      recordId,
+      JSON.stringify(diffObj),
+      changedBy
+    );
+  }
+  catch (error) {
+    console.error(`Failed to log ${operationType} for ${tableName}:`, error);
+    //doesnt exit because its not a critical failure
+  }
+}

@@ -1,10 +1,11 @@
 import { Router, Request, Response } from "express";
 
 import { HttpError } from "../helpers/errors";
-import { db, teamTableDef } from "../helpers/db";
+import { db, teamTableDef, logChange } from "../helpers/db";
 import { Team } from "../model/team";
 import { deleteUploadedFile } from "../helpers/fileupload";
 import { requireRole } from "../helpers/auth";
+import { log } from "console";
 
 export const teamsRouter = Router();
 
@@ -59,11 +60,13 @@ teamsRouter.get('/', requireRole([0, 1]), async (req: Request, res: Response) =>
 
 teamsRouter.post('/', requireRole([0]), async (req: Request, res: Response) => {
   const { name, longname, color, has_avatar } = req.body; // assume body has correct shape so name is present
+  const user = (req as any).user?.username || 'unknown';
   try {
     const newTeam = new Team(name, longname, color, has_avatar);
     const addedTeam = await db!.connection!.get('INSERT INTO teams (name, longname, color, has_avatar) VALUES (?, ?, ?, ?) RETURNING *',
       newTeam.name, newTeam.longname, newTeam.color, newTeam.has_avatar
     );
+    await logChange('teams', 'INSERT', addedTeam.id, null, addedTeam, user);
     res.json(addedTeam); // return the newly created Team; alternatively, you may consider returning the full list of teams
   } catch (error: Error | any) {
     throw new HttpError(400, 'Cannot add team: ' + error.message); // bad request; validation or database error
@@ -72,10 +75,17 @@ teamsRouter.post('/', requireRole([0]), async (req: Request, res: Response) => {
 
 teamsRouter.put('/', requireRole([0]), async (req: Request, res: Response) => {
   const { id, name, longname, color, has_avatar } = req.body;
+  const user = (req as any).user?.username || 'unknown';
   try {
     if (typeof id !== 'number' || id <= 0) {
       throw new HttpError(400, 'ID was not provided correctly');
     }
+
+    const oldTeam = await db.connection!.get('SELECT * FROM teams WHERE id = ?', id);
+    if (!oldTeam) {
+      throw new HttpError(404, 'Team to update not found');
+    }
+
     const TeamToUpdate = new Team(name, longname, color, has_avatar);
     TeamToUpdate.id = id;  // retain the original id
     const updatedTeam = await db!.connection!.get('UPDATE teams SET name = ?, longname = ?, color = ?, has_avatar = ? WHERE id = ? RETURNING *',
@@ -85,6 +95,7 @@ teamsRouter.put('/', requireRole([0]), async (req: Request, res: Response) => {
       if(!has_avatar) {
         deleteUploadedFile(id.toString() + '.png', 'avatar'); // delete associated avatar file if exists
       }
+      await logChange('teams', 'UPDATE', updatedTeam.id, oldTeam, updatedTeam, user);
       res.json(updatedTeam); // return the updated Team
     } else {
       throw new HttpError(404, 'Team to update not found');
@@ -96,12 +107,14 @@ teamsRouter.put('/', requireRole([0]), async (req: Request, res: Response) => {
 
 teamsRouter.delete('/', requireRole([0]), async (req: Request, res: Response) => {
   const id = parseInt(req.query.id as string, 10);
+  const user = (req as any).user?.username || 'unknown';
   if (isNaN(id) || id <= 0) {
     throw new HttpError(404, 'ID was not provided correctly');
   }
   const deletedTeam = await db!.connection!.get('DELETE FROM teams WHERE id = ? RETURNING *', id);
   if (deletedTeam) {
     deleteUploadedFile(id.toString() + '.png', 'avatar'); // delete associated avatar file if exists
+    await logChange('teams', 'DELETE', deletedTeam.id, deletedTeam, null, user);
     res.json(deletedTeam); // return the deleted Team
   } else {
     throw new HttpError(404, 'Team to delete not found');
