@@ -16,6 +16,7 @@ import { User } from '../../models/user';
 import { AuthService } from '../../services/auth';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ColorsService } from '../../services/colors';
+import { LockService } from '../../services/lock';  
 
 @Component({
   selector: 'tasks-table',
@@ -47,7 +48,8 @@ export class TasksTableComponent  {
     private teamsService: TeamsService,
     private colorsService: ColorsService,
     private dialog: MatDialog,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private lockService: LockService
   ) {
     this.authService.currentUser$.subscribe(user => { this.user = user; });
     this.getContrastColor = this.colorsService.getContrastColor;
@@ -86,13 +88,26 @@ export class TasksTableComponent  {
 
   openDialog(row: Task | null) {
       if (!this.isInRole([0])) return;
-      const dialogRef = this.dialog.open(EditTaskDialog, {
-        width: '75%',
-        data: { row }
-      });
-      dialogRef.afterClosed().subscribe(result => {
-        if(result) {
-          this.timestamp = Date.now();
+
+      if (!row) return;
+
+      this.lockService.acquireLock('task', row.id).subscribe(result => {
+        if (result.success) {
+          const dialogRef = this.dialog.open(EditTaskDialog, {
+            width: '75%',
+            data: { row }
+          });
+          dialogRef.afterClosed().subscribe(result => {
+            this.lockService.releaseLock('task', row.id);
+            if(result) {
+              this.timestamp = Date.now();
+            }
+          });
+        } else {
+          this.snackBar.open(`Task is currently being edited by ${result.holder}`, 'Close', {
+            duration: 5000,
+            panelClass: ['snackbar-warning']
+          });
         }
       });
   }

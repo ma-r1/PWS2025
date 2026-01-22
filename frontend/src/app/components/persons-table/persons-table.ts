@@ -5,6 +5,7 @@ import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialog } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 import { Person } from '../../models/person';
 import { PersonsService } from '../../services/persons';
@@ -12,6 +13,7 @@ import { EditPersonDialog } from '../../dialogs/edit-person/edit-person';
 import { ColorsService } from '../../services/colors';
 import { User } from '../../models/user';
 import { AuthService } from '../../services/auth';
+import { LockService } from '../../services/lock';
 
 @Component({
   selector: 'persons-table',
@@ -53,7 +55,9 @@ export class PersonsTableComponent implements AfterViewInit, OnDestroy {
     private authService: AuthService,
     private colorsService: ColorsService,
     private personsService: PersonsService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private lockService: LockService,
+    private snackBar: MatSnackBar
   ) {
     this.authService.currentUser$.subscribe(user => { this.user = user; });
     this.getContrastColor = this.colorsService.getContrastColor;
@@ -69,21 +73,36 @@ export class PersonsTableComponent implements AfterViewInit, OnDestroy {
 
   openDialog(row: Person | null) {
     if (!this.isInRole([0])) return;
-    row!.team_ids = row?.team_objects?.map(team => team.id);
 
-    const scrollTop = this.tableContainer?.nativeElement.scrollTop || 0; // remember current position
-    const dialogRef = this.dialog.open(EditPersonDialog, {
-      width: '75%',
-      minWidth: '800px',
-      data: { row }
+    if(!row) return;
+    
+    this.lockService.acquireLock('person', row.id).subscribe(result => {
+      if (result.success) {
+      row!.team_ids = row?.team_objects?.map(team => team.id);
+
+      const scrollTop = this.tableContainer?.nativeElement.scrollTop || 0; // remember current position
+      const dialogRef = this.dialog.open(EditPersonDialog, {
+        width: '75%',
+        minWidth: '800px',
+        data: { row }
+      });
+      dialogRef.afterClosed().subscribe(result => {
+        this.lockService.releaseLock('person', row!.id);
+        if(result) {
+          this.timestamp = Date.now();
+          this.resetAndLoad();
+          this.tableContainer!.nativeElement.scrollTop = scrollTop;
+        }
+      })
+    } else {
+        this.snackBar.open(`Person is currently being edited by ${result.holder}`, 'Close', {
+          duration: 5000,
+          panelClass: ['snackbar-warning']
+        });
+    }
     });
-    dialogRef.afterClosed().subscribe(result => {
-      if(result) {
-        this.timestamp = Date.now();
-        this.resetAndLoad();
-        this.tableContainer!.nativeElement.scrollTop = scrollTop;
-      }
-    })
+
+    
   }
 
   isInRole(roles: number[]) {

@@ -15,6 +15,7 @@ import { tasksRouter } from './api/tasks';
 import { adminRouter } from './api/admin';
 import { attachWebSocketServer } from './helpers/websocket';
 import { changelogsRouter } from './api/changelogs';
+import { locksRouter } from './api/locks';
 
 config({ quiet: true });
 
@@ -57,6 +58,7 @@ async function main() {
   app.use(apiUrl + '/tasks', tasksRouter)
   app.use(apiUrl + '/changelogs', changelogsRouter);
   app.use(apiUrl + '/admin', adminRouter);
+  app.use(apiUrl + '/locks', locksRouter);
 
   // install our error handler (must be the last app.use)
   app.use(errorHandler);

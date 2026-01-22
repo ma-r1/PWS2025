@@ -5,6 +5,7 @@ import { SessionData } from 'express-session';
 import { WebSocketServer, WebSocket } from 'ws';
 import { findUserByIdSafe, sessionStore } from './auth';
 import { RawData } from 'ws'; 
+import { LockManager } from './lock';
 
 interface WSMessage {
   type: string;
@@ -152,6 +153,9 @@ export function attachWebSocketServer(server: http.Server) {
     });
 
     ws.on('close', () => {
+      if (ws.user) {
+        LockManager.releaseAllForUser(ws.user.id);
+      }
       clients.delete(ws);
       notifyAdminsOfUpdate();
     });

@@ -14,6 +14,7 @@ import { EditTeamDialog } from '../../dialogs/edit-team/edit-team';
 import { ColorsService } from '../../services/colors';
 import { User } from '../../models/user';
 import { AuthService } from '../../services/auth';
+import { LockService } from '../../services/lock';
 
 @Component({
   selector: 'teams-table',
@@ -34,7 +35,7 @@ export class TeamsTableComponent {
 
   @Input() filter: string = '';
   
-  constructor(private authService: AuthService, private colorsService: ColorsService, private teamsService: TeamsService, private dialog: MatDialog, private snackBar: MatSnackBar) {
+  constructor(private authService: AuthService, private colorsService: ColorsService, private teamsService: TeamsService, private dialog: MatDialog, private snackBar: MatSnackBar, private lockService: LockService) {
     this.authService.currentUser$.subscribe(user => { this.user = user });
     this.getContrastColor = this.colorsService.getContrastColor;
   }
@@ -62,14 +63,28 @@ export class TeamsTableComponent {
 
   openDialog(row: Team | null) {
     if (!this.isInRole([0])) return;
-    const dialogRef = this.dialog.open(EditTeamDialog, {
-      width: '100%',
-      maxWidth: '75vw',
-      data: { row }
-    });
-    dialogRef.afterClosed().subscribe(result => {
-      if(result) {
-        this.timestamp = Date.now();
+
+    if (!row) return;
+
+    this.lockService.acquireLock('team', row.id).subscribe(result => {
+      if (result.success) {
+        const dialogRef = this.dialog.open(EditTeamDialog, {
+          width: '100%',
+          maxWidth: '75vw',
+          data: { row }
+        });
+
+        dialogRef.afterClosed().subscribe(result => {
+          this.lockService.releaseLock('team', row.id);
+          if(result) {
+            this.timestamp = Date.now();
+          }
+        });
+      } else {
+        this.snackBar.open(`Team is currently being edited by ${result.holder}`, 'Close', {
+          duration: 5000,
+          panelClass: ['snackbar-warning']
+        });
       }
     });
   }
