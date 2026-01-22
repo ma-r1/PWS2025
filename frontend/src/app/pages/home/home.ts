@@ -78,7 +78,7 @@ export class HomePage {
     ngOnInit(): void {
     this.sub = this.websocketService.messages$.pipe(
         map(msg => typeof msg === 'string' ? JSON.parse(msg) as WSMessage : msg)
-    ).subscribe(msg => {
+    ).subscribe(msg => { //TODO: Handle messages for updating chart
       console.log('WebSocket message received:', msg);
     });
   }

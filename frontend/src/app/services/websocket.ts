@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
 import { Subject } from 'rxjs';
 import { share } from 'rxjs/operators';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 export interface WSMessage { type: string, data?: any }
 
@@ -11,10 +12,12 @@ export class WebsocketService {
   private reconnectDelay = 3000;
   private messageQueue: WSMessage[] = [];
 
+  private shouldReconnect = true;
+
   private incoming$ = new Subject<WSMessage>();
   public messages$ = this.incoming$.asObservable().pipe(share());
 
-  constructor() {
+  constructor(private snackBar: MatSnackBar) {
     this.connect();
   }
 
@@ -34,6 +37,7 @@ export class WebsocketService {
   }
 
   connect() {
+    this.shouldReconnect = true;
     if (!this.socket$) {
       this.socket$ = this.createSocket();
 
@@ -42,7 +46,20 @@ export class WebsocketService {
           if (msg?.type === 'ping') {
             console.log('Received ping, sending pong');
             this.send({ type: 'pong', data: msg?.data });
-          } else {
+          } 
+          else if (msg?.type === 'KICK') {
+            this.shouldReconnect = false;
+            this.close();
+            this.snackBar.open(msg.data, 'Close', {
+              duration: 5000,
+              horizontalPosition: 'center',
+              verticalPosition: 'bottom',
+              panelClass: ['snackbar-warning']
+            });
+            setTimeout(() => { window.location.href = ''; }, 1000);
+            return;
+          }          
+          else {
             this.incoming$.next(msg);
           }
         },
@@ -65,11 +82,13 @@ export class WebsocketService {
   }
 
   private onClose() {
-    console.warn(`WebSocket closed, reconnecting in ${this.reconnectDelay / 1000}s`);
-    this.socket$ = undefined;
-    setTimeout(() => this.connect(), this.reconnectDelay);
+    if (this.shouldReconnect) {
+      console.warn(`WebSocket closed, reconnecting in ${this.reconnectDelay / 1000}s`);
+      this.socket$ = undefined;
+      setTimeout(() => this.connect(), this.reconnectDelay);
+    }
   }
-
+  
   public send(msg: WSMessage) {
     if (!this.socket$) {
       this.messageQueue.push(msg);

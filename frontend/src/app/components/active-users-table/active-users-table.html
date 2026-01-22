@@ -1,0 +1,34 @@
+<table mat-table [dataSource]="users" class="mat-compact-table mat-mdc-table">
+
+  <ng-container matColumnDef="id">
+    <th mat-header-cell *matHeaderCellDef class="centered"> ID </th>
+    <td mat-cell *matCellDef="let user" class="centered"> {{ user.id }} </td>
+  </ng-container>
+
+  <ng-container matColumnDef="username">
+    <th mat-header-cell *matHeaderCellDef> Username </th>
+    <td mat-cell *matCellDef="let user"> {{ user.username }} </td>
+  </ng-container>
+
+  <ng-container matColumnDef="roles">
+    <th mat-header-cell *matHeaderCellDef> Roles </th>
+    <td mat-cell *matCellDef="let user"> {{ user.roles }} </td>
+  </ng-container>
+
+  <ng-container matColumnDef="lastPong">
+    <th mat-header-cell *matHeaderCellDef> Last active </th>
+    <td mat-cell *matCellDef="let user"> {{ user.lastPong | date:'medium' }} </td>
+  </ng-container>
+
+  <ng-container matColumnDef="actions">
+    <th mat-header-cell *matHeaderCellDef class="centered"> Actions </th>
+    <td mat-cell *matCellDef="let user" class="centered"> 
+      <button mat-icon-button color="warn" (click)="onKick(user)" title="Kick User">
+        <mat-icon>logout</mat-icon>
+      </button>
+    </td>
+  </ng-container>
+
+  <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+  <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+</table>

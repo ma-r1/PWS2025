@@ -116,7 +116,7 @@ passport.deserializeUser((id: number, done: (err: any, user?: User | false | nul
 
 authRouter.post('', passport.authenticate('json'), (req: Request, res: Response) => {
   const authReq = req as AuthRequest;
-  broadcast([ 0 ], { type: 'login', data: 'New user successfully logged in' });
+  broadcast([ 0 ], { type: 'login', data: 'New user successfully logged in' }); //TODO: update users table?
   res.json({
     message: 'Logged in successfully',
     username: authReq.user?.username,

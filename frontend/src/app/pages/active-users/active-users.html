@@ -1,0 +1,5 @@
+@if(isInRole([0])) {
+  <div>
+    <active-users-table [users]="users" (kick)="kickUser($event)"></active-users-table> 
+  </div>
+}

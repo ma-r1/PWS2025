@@ -13,6 +13,7 @@ interface WSMessage {
 
 interface WSWithUser extends WebSocket { // extended WebSocket to include user info
   user?: any;
+  sessionID?: string;
 }
 
 interface ClientState {
@@ -21,6 +22,10 @@ interface ClientState {
 }
 
 const clients = new Map<WSWithUser, ClientState>();
+
+function notifyAdminsOfUpdate() {
+  broadcast([0], {type: 'REFRESH_ACTIVE_USERS'});
+}
 
 export function broadcast(roles: number[], msg: WSMessage) {
   const now = Date.now();
@@ -41,6 +46,46 @@ export function broadcast(roles: number[], msg: WSMessage) {
       }
     }
   }
+}
+
+export function getActiveConnections() {
+  const activeList: any[] = [];
+  const uniqueIds = new Set<number>();
+
+  for (const [ws, state] of clients) {
+    if (ws.user && !uniqueIds.has(ws.user.id)) {
+      uniqueIds.add(ws.user.id);
+      activeList.push({
+        id: ws.user.id,
+        username: ws.user.username,
+        roles: ws.user.roles,
+        lastPong: state.lastPong,
+      });
+    }
+  }
+  return activeList;
+}
+
+export function kickUser(userId: number): boolean {
+  let found = false;
+  for (const [ws, state] of clients) {
+    if (ws.user?.id === userId) {
+      found = true;
+
+      if (ws.sessionID) {
+        sessionStore.destroy(ws.sessionID, (err) => {
+        });
+      }
+
+      if (ws.readyState === ws.OPEN) {
+        ws.send(JSON.stringify({ type: 'KICK', data: 'Admin forced logout' }));
+      }
+      ws.terminate();
+      clients.delete(ws);
+    }
+  }
+  if (found) notifyAdminsOfUpdate();
+  return found;
 }
 
 export function attachWebSocketServer(server: http.Server) {
@@ -74,6 +119,7 @@ export function attachWebSocketServer(server: http.Server) {
         wss.handleUpgrade(req, socket, head, ws => {
           const wsUser = ws as WSWithUser;
           wsUser.user = user;
+          wsUser.sessionID = sessionID;
           wss.emit('connection', wsUser, req);
         });
       });
@@ -84,12 +130,14 @@ export function attachWebSocketServer(server: http.Server) {
   });
 
   wss.on('connection', (ws: WSWithUser) => {
+    console.log('User connected:', ws.user?.username);
     const client: ClientState = {
       socket: ws,
       lastPong: Date.now(),
     };
 
     clients.set(ws, client);
+    notifyAdminsOfUpdate();
 
     ws.on('message', (raw: RawData) => {
       let msg: WSMessage;
@@ -103,8 +151,14 @@ export function attachWebSocketServer(server: http.Server) {
       }
     });
 
-    ws.on('close', () => clients.delete(ws));
-    ws.on('error', () => clients.delete(ws));
+    ws.on('close', () => {
+      clients.delete(ws);
+      notifyAdminsOfUpdate();
+    });
+    ws.on('error', () => {
+      clients.delete(ws);
+      notifyAdminsOfUpdate();
+    });
   });
 
   setInterval(() => {
