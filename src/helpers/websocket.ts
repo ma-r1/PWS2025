@@ -28,6 +28,10 @@ function notifyAdminsOfUpdate() {
   broadcast([0], {type: 'REFRESH_ACTIVE_USERS'});
 }
 
+export function notifyChartUpdate() {
+  broadcast([0,1], {type: 'UPDATE_CHART'});
+}
+
 export function broadcast(roles: number[], msg: WSMessage) {
   const now = Date.now();
 

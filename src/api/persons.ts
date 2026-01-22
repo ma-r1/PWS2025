@@ -4,7 +4,7 @@ import { HttpError } from "../helpers/errors";
 import { db, personTableDef, logChange } from "../helpers/db";
 import { Person } from "../model/person";
 import { requireRole } from "../helpers/auth";
-import { de } from "@faker-js/faker/.";
+import { notifyChartUpdate } from "../helpers/websocket";
 
 export const personsRouter = Router();
 
@@ -132,6 +132,7 @@ personsRouter.post('/', requireRole([0]), async (req: Request, res: Response) =>
     await setMembership(addedPerson.id, newPerson.team_ids);
     await logChange('persons', 'INSERT', addedPerson.id, null, addedPerson, user);
     await db!.connection!.exec('COMMIT');
+    notifyChartUpdate();
     res.json(addedPerson);
   } catch (error: Error | any) {
     await db!.connection!.exec('ROLLBACK');
@@ -173,6 +174,7 @@ personsRouter.put('/', requireRole([0]), async (req: Request, res: Response) => 
       await setMembership(updatedPerson.id, personToUpdate.team_ids);
       await logChange('persons', 'UPDATE', updatedPerson.id, oldPerson, updatedPerson, user);
       await db!.connection!.exec('COMMIT');
+      notifyChartUpdate();
       res.json(updatedPerson); // return the updated person
     } else {
       await db!.connection!.exec('ROLLBACK');

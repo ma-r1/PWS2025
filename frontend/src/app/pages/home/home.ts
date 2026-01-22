@@ -60,14 +60,7 @@ export class HomePage {
     constructor(private authService: AuthService, private teamsService: TeamsService, private websocketService: WebsocketService) {
     this.authService.currentUser$.subscribe(user => { 
       this.user = user;
-      if(this.isInRole([0,1])) {
-        this.teamsService.getTeams("", 3).subscribe(teams => {
-          this.chartData.labels = teams.map(team => (team.name));
-          this.chartData.datasets[0].data = teams.map(team => (team.member_count ?? 0));
-          this.chartData.datasets[0].backgroundColor = teams.map(team => (team.color ?? 0));
-          this.chart?.update();
-        });
-      }
+      this.refreshChart();
     });
   }
 
@@ -75,11 +68,25 @@ export class HomePage {
     return this.authService.isInRole(this.user, roles);
   }
 
-    ngOnInit(): void {
+  refreshChart() {
+    if (this.isInRole([0,1])) {
+      this.teamsService.getTeams("", 3).subscribe(teams => {
+        this.chartData.labels = teams.map(team => (team.name));
+        this.chartData.datasets[0].data = teams.map(team => (team.member_count ?? 0));
+        this.chartData.datasets[0].backgroundColor = teams.map(team => (team.color ?? 0));
+        this.chart?.update();
+      });
+    }
+  }
+
+  ngOnInit(): void {
     this.sub = this.websocketService.messages$.pipe(
         map(msg => typeof msg === 'string' ? JSON.parse(msg) as WSMessage : msg)
-    ).subscribe(msg => { //TODO: Handle messages for updating chart
-      console.log('WebSocket message received:', msg);
+    ).subscribe(msg => { 
+      if (msg.type === 'UPDATE_CHART') {
+        console.log('Chart update signal received');
+        this.refreshChart();
+      }
     });
   }
 
