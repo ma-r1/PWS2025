@@ -34,7 +34,8 @@ export class TeamsPage {
 
     openDialog() {
         const dialogRef = this.dialog.open(EditTeamDialog, {
-            width: '75%',
+            width: '100%',
+            maxWidth: '75vw',
             data: { row: null }
         });
         dialogRef.afterClosed().subscribe(result => {

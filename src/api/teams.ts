@@ -13,7 +13,7 @@ export const teamsRouter = Router();
 teamsRouter.get('/', requireRole([0, 1]), async (req: Request, res: Response) => {
   let query = `
     SELECT
-      id, name, longname, color, has_avatar,
+      id, name, longname, color, has_avatar, latitude, longitude,
       (
         SELECT COUNT(*)
         FROM memberships m
@@ -55,16 +55,19 @@ teamsRouter.get('/', requireRole([0, 1]), async (req: Request, res: Response) =>
     sqlParams.push(offset);
   }
   const teams = await db!.connection!.all(query, sqlParams);
-  res.json(teams);
+  const result = teams.map(({ latitude, longitude, ...rest }) => ({
+    ...rest, location: { latitude, longitude }
+  }));
+  res.json(result);
 });
 
-teamsRouter.post('/', requireRole([0]), async (req: Request, res: Response) => {
-  const { name, longname, color, has_avatar } = req.body; // assume body has correct shape so name is present
+teamsRouter.post('/', requireRole([0]), async (req: Request<{}, {}, Team>, res: Response) => {
+  const { name, longname, color, has_avatar, location} = req.body; // assume body has correct shape so name is present
   const user = (req as any).user?.username || 'unknown';
   try {
-    const newTeam = new Team(name, longname, color, has_avatar);
-    const addedTeam = await db!.connection!.get('INSERT INTO teams (name, longname, color, has_avatar) VALUES (?, ?, ?, ?) RETURNING *',
-      newTeam.name, newTeam.longname, newTeam.color, newTeam.has_avatar
+    const newTeam = new Team(name, longname, color, has_avatar, location);
+    const addedTeam = await db!.connection!.get('INSERT INTO teams (name, longname, color, has_avatar, latitude, longitude) VALUES (?, ?, ?, ?, ?, ?) RETURNING *',
+      newTeam.name, newTeam.longname, newTeam.color, newTeam.has_avatar, newTeam.location?.latitude ?? null, newTeam.location?.longitude ?? null
     );
     await logChange('teams', 'INSERT', addedTeam.id, null, addedTeam, user);
     res.json(addedTeam); // return the newly created Team; alternatively, you may consider returning the full list of teams
@@ -73,8 +76,8 @@ teamsRouter.post('/', requireRole([0]), async (req: Request, res: Response) => {
   }
 });
 
-teamsRouter.put('/', requireRole([0]), async (req: Request, res: Response) => {
-  const { id, name, longname, color, has_avatar } = req.body;
+teamsRouter.put('/', requireRole([0]), async (req: Request<{}, {}, Team>, res: Response) => {
+  const { id, name, longname, color, has_avatar, location } = req.body;
   const user = (req as any).user?.username || 'unknown';
   try {
     if (typeof id !== 'number' || id <= 0) {
@@ -86,10 +89,10 @@ teamsRouter.put('/', requireRole([0]), async (req: Request, res: Response) => {
       throw new HttpError(404, 'Team to update not found');
     }
 
-    const TeamToUpdate = new Team(name, longname, color, has_avatar);
+    const TeamToUpdate = new Team(name, longname, color, has_avatar, location);
     TeamToUpdate.id = id;  // retain the original id
-    const updatedTeam = await db!.connection!.get('UPDATE teams SET name = ?, longname = ?, color = ?, has_avatar = ? WHERE id = ? RETURNING *',
-      TeamToUpdate.name, TeamToUpdate.longname, TeamToUpdate.color, TeamToUpdate.has_avatar, TeamToUpdate.id
+    const updatedTeam = await db!.connection!.get('UPDATE teams SET name = ?, longname = ?, color = ?, has_avatar = ?, latitude = ?, longitude = ? WHERE id = ? RETURNING *',
+      TeamToUpdate.name, TeamToUpdate.longname, TeamToUpdate.color, TeamToUpdate.has_avatar, TeamToUpdate.location?.latitude ?? null, TeamToUpdate.location?.longitude ?? null, TeamToUpdate.id
     );
     if (updatedTeam) {
       if(!has_avatar) {

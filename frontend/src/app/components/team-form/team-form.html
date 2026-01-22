@@ -1,5 +1,5 @@
-<form [formGroup]="form">
-
+<div class="layout">
+  <form [formGroup]="form" class="form-column">
     <mat-card>
         <mat-card-content class="form-container">
 
@@ -70,5 +70,10 @@
 
         </mat-card-content>
     </mat-card>
-
 </form>
+
+  <location class="map-column" 
+    [location]="form.get('location')?.value" (locationChange)="onLocationChange($event)">
+  </location>
+
+</div>

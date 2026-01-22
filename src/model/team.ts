@@ -1,5 +1,6 @@
 import { HttpError } from "../helpers/errors";
 import { COLORS } from "../shared/colors";
+import { GeoPoint } from "./geopoint";
 
 // schema for a team
 export class Team {
@@ -8,8 +9,9 @@ export class Team {
   longname: string;
   color: string;
   has_avatar: boolean;
+  location?: GeoPoint | null;
 
-  constructor(name: string, longname: string, color: string, has_avatar: boolean = false) {
+  constructor(name: string, longname: string, color: string, has_avatar: boolean = false, location: GeoPoint | null = null) {
 
     if (!name || typeof name !== 'string' || name.trim().length === 0)
       throw new HttpError(400, 'Name was not provided correctly');
@@ -23,5 +25,7 @@ export class Team {
     this.longname = longname.trim();
     this.color = color.trim();
     this.has_avatar = has_avatar;
+    this.location = location;
+
   }
 }

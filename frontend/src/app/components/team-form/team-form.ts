@@ -10,12 +10,14 @@ import { MatIcon } from '@angular/material/icon';
 
 import { Team } from '../../models/team';
 import { COLORS } from '../../../../../src/shared/colors';
+import { LocationComponent } from "../location/location";
+import { GeoPoint } from '../../models/geopoint';
 
 @Component({
   selector: 'team-form',
   templateUrl: './team-form.html',
   styleUrls: ['./team-form.scss'],
-  imports: [CommonModule, ReactiveFormsModule, MatCardModule, MatInputModule, MatButtonModule, MatSelectModule, MatOptionModule, MatIcon ],
+  imports: [CommonModule, ReactiveFormsModule, MatCardModule, MatInputModule, MatButtonModule, MatSelectModule, MatOptionModule, MatIcon, LocationComponent],
   standalone: true
 })
 export class TeamFormComponent {
@@ -33,7 +35,8 @@ export class TeamFormComponent {
       name: ['', Validators.required],
       longname: ['', Validators.required],
       color: ['', Validators.required],
-      avatar: ['']
+      avatar: [''],
+      location: this.fb.control<GeoPoint | null>(null)
     });
 
     this.form.statusChanges.subscribe(() => {
@@ -79,5 +82,9 @@ export class TeamFormComponent {
     if(this.row) {
       this.row.has_avatar = false;
     }
+  }
+
+  onLocationChange(newLocation: GeoPoint) {
+    this.form.patchValue({ location: newLocation });
   }
 }

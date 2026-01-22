@@ -43,7 +43,9 @@ export const teamTableDef = {
     name: { type: 'TEXT' },
     longname: { type: 'TEXT' },
     color: { type: 'TEXT', skipFiltering: true },
-    has_avatar: { type: 'INTEGER', skipFiltering: true }
+    has_avatar: { type: 'INTEGER', skipFiltering: true },
+    latitude: { type: 'REAL', skipFiltering: true },
+    longitude: { type: 'REAL', skipFiltering: true }
   }
 };
 
